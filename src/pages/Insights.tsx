@@ -52,7 +52,7 @@ export default function Insights() {
 
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) =>
     trend === 'up' ? <TrendingUp size={16} className="text-red-500" /> :
-    trend === 'down' ? <TrendingUp size={16} className="text-green-500" style={{ transform: 'scaleY(-1)' }} /> :
+    trend === 'down' ? <TrendingDown size={16} className="text-green-500" /> :
     <Minus size={16} className="text-yellow-500" />;
 
   return (
