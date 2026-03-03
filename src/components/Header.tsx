@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Moon, Sun, LogOut } from 'lucide-react';
+import { Moon, Sun, LogOut, Menu } from 'lucide-react';
 import { useStore } from '../store/useStore';
 import { useAuth } from '../context/AuthContext';
 
@@ -16,7 +16,7 @@ const pageTitles: Record<string, string> = {
   '/insights': 'Insights',
 };
 
-export default function Header() {
+export default function Header({ onMenuClick }: { onMenuClick?: () => void }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { toggleDarkMode, settings } = useStore((s) => ({
@@ -53,9 +53,18 @@ export default function Header() {
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between shrink-0">
-      <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400">{today}</p>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={onMenuClick}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors md:hidden"
+          aria-label="Open menu"
+        >
+          <Menu size={20} />
+        </button>
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">{today}</p>
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <button
