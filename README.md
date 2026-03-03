@@ -1,6 +1,6 @@
-# Personal Intelligence Dashboard
+# Habit Tracker
 
-Dashboard with SJ philosophy
+Habit Tracker with SJ philosophy
 
 copilot/add-multi-user-authentication
 ## Setup
