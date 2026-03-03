@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useStore } from './store/useStore';
+import { AuthProvider } from './context/AuthContext';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './pages/Login';
+import SignUp from './pages/SignUp';
 import Dashboard from './pages/Dashboard';
 import Tasks from './pages/Tasks';
 import Notes from './pages/Notes';
@@ -25,22 +29,33 @@ export default function App() {
   }, [darkMode]);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="tasks" element={<Tasks />} />
-          <Route path="notes" element={<Notes />} />
-          <Route path="fitness" element={<Fitness />} />
-          <Route path="spending" element={<Spending />} />
-          <Route path="mood" element={<Mood />} />
-          <Route path="learning" element={<Learning />} />
-          <Route path="reading" element={<Reading />} />
-          <Route path="goals" element={<Goals />} />
-          <Route path="insights" element={<Insights />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout />
+              </ProtectedRoute>
+            }
+          >
+            <Route index element={<Navigate to="/dashboard" replace />} />
+            <Route path="dashboard" element={<Dashboard />} />
+            <Route path="tasks" element={<Tasks />} />
+            <Route path="notes" element={<Notes />} />
+            <Route path="fitness" element={<Fitness />} />
+            <Route path="spending" element={<Spending />} />
+            <Route path="mood" element={<Mood />} />
+            <Route path="learning" element={<Learning />} />
+            <Route path="reading" element={<Reading />} />
+            <Route path="goals" element={<Goals />} />
+            <Route path="insights" element={<Insights />} />
+          </Route>
+        </Routes>
+      </BrowserRouter>
+    </AuthProvider>
   );
 }
