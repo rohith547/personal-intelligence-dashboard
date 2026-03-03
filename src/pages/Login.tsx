@@ -42,8 +42,8 @@ export default function Login() {
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <BrainCircuit className="text-blue-500 mb-3" size={40} />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Personal Intelligence Dashboard</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your personal insight engine</p>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Habit Tracker</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Track your habits, reach your goals</p>
         </div>
 
         {error && (
