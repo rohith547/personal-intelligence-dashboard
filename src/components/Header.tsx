@@ -1,6 +1,7 @@
-import { useLocation } from 'react-router-dom';
-import { Moon, Sun } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Moon, Sun, LogOut } from 'lucide-react';
 import { useStore } from '../store/useStore';
+import { useAuth } from '../context/AuthContext';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -17,10 +18,12 @@ const pageTitles: Record<string, string> = {
 
 export default function Header() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { toggleDarkMode, settings } = useStore((s) => ({
     toggleDarkMode: s.toggleDarkMode,
     settings: s.settings,
   }));
+  const { user, signOut } = useAuth();
   const title = pageTitles[location.pathname] ?? 'Dashboard';
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',
@@ -29,19 +32,56 @@ export default function Header() {
     day: 'numeric',
   });
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/login');
+  };
+
+  const initials = (() => {
+    const fullName = user?.user_metadata?.full_name as string | undefined;
+    if (fullName) {
+      return fullName
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2);
+    }
+    return user?.email ? user.email[0].toUpperCase() : '?';
+  })();
+
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between shrink-0">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h1>
         <p className="text-sm text-gray-500 dark:text-gray-400">{today}</p>
       </div>
-      <button
-        onClick={toggleDarkMode}
-        className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-        aria-label="Toggle dark mode"
-      >
-        {settings.darkMode ? <Sun size={20} /> : <Moon size={20} />}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          aria-label="Toggle dark mode"
+        >
+          {settings.darkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+        {user && (
+          <>
+            <div
+              className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold"
+              title={user.email ?? ''}
+            >
+              {initials}
+            </div>
+            <button
+              onClick={handleSignOut}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Sign out"
+            >
+              <LogOut size={20} />
+            </button>
+          </>
+        )}
+      </div>
     </header>
   );
 }
