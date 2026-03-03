@@ -1,3 +1,4 @@
+import { useLocation } from 'react-router-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, LogOut } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -32,6 +33,18 @@ export default function Header() {
     day: 'numeric',
   });
 
+  const displayName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    user?.email ??
+    '';
+  const initials = displayName
+    ? displayName
+        .split(' ')
+        .map((n: string) => n[0])
+        .slice(0, 2)
+        .join('')
+        .toUpperCase()
+    : '?';
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
@@ -57,6 +70,21 @@ export default function Header() {
         <p className="text-sm text-gray-500 dark:text-gray-400">{today}</p>
       </div>
       <div className="flex items-center gap-3">
+        {user && (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold">
+                {initials}
+              </div>
+              <span className="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
+                {displayName}
+              </span>
+            </div>
+            <button
+              onClick={signOut}
+              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              aria-label="Sign out"
+              title="Sign out"
         <button
           onClick={toggleDarkMode}
           className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -81,6 +109,13 @@ export default function Header() {
             </button>
           </>
         )}
+        <button
+          onClick={toggleDarkMode}
+          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          aria-label="Toggle dark mode"
+        >
+          {settings.darkMode ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
       </div>
     </header>
   );

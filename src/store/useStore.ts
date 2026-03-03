@@ -13,6 +13,7 @@ import type {
   CodeCommit,
 } from '../types';
 import { generateInsightSummary } from '../lib/insights';
+import { supabase } from '../lib/supabase';
 
 function daysAgo(n: number): string {
   const d = new Date();
@@ -169,6 +170,11 @@ interface StoreState {
   codeCommits: CodeCommit[];
   settings: { darkMode: boolean };
 
+  // Auth / Supabase sync
+  userId: string | null;
+  setUserId: (id: string | null) => void;
+  loadUserData: (userId: string) => Promise<void>;
+
   // Tasks
   addTask: (task: Omit<Task, 'id' | 'createdAt'>) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
@@ -234,83 +240,306 @@ export const useStore = create<StoreState>()(
       goals: SEED_GOALS,
       codeCommits: [],
       settings: { darkMode: false },
+      userId: null,
 
-      addTask: (task) =>
-        set((s) => ({
-          tasks: [
-            ...s.tasks,
-            { ...task, id: uuidv4(), createdAt: new Date().toISOString() },
-          ],
-        })),
-      updateTask: (id, updates) =>
-        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)) })),
-      deleteTask: (id) => set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) })),
-      toggleTask: (id) =>
+      setUserId: (id) => set({ userId: id }),
+
+      loadUserData: async (userId) => {
+        set({ userId });
+        try {
+          const [
+            { data: tasks },
+            { data: notes },
+            { data: fitness },
+            { data: spending },
+            { data: mood },
+            { data: learning },
+            { data: reading },
+            { data: goals },
+          ] = await Promise.all([
+            supabase.from('tasks').select('*').eq('user_id', userId),
+            supabase.from('notes').select('*').eq('user_id', userId),
+            supabase.from('fitness_entries').select('*').eq('user_id', userId),
+            supabase.from('spending_entries').select('*').eq('user_id', userId),
+            supabase.from('mood_entries').select('*').eq('user_id', userId),
+            supabase.from('learning_entries').select('*').eq('user_id', userId),
+            supabase.from('reading_entries').select('*').eq('user_id', userId),
+            supabase.from('goals').select('*').eq('user_id', userId),
+          ]);
+          set({
+            tasks: tasks ? tasks.map((r) => ({
+              id: r.id as string,
+              title: r.title as string,
+              description: r.description as string | undefined,
+              completed: r.completed as boolean,
+              priority: r.priority as Task['priority'],
+              category: r.category as string,
+              createdAt: r.created_at as string,
+              completedAt: r.completed_at as string | undefined,
+              dueDate: r.due_date as string | undefined,
+            })) : get().tasks,
+            notes: notes ? notes.map((r) => ({
+              id: r.id as string,
+              title: r.title as string,
+              content: r.content as string,
+              tags: (r.tags ?? []) as string[],
+              category: r.category as string,
+              createdAt: r.created_at as string,
+              updatedAt: r.updated_at as string,
+            })) : get().notes,
+            fitnessEntries: fitness ? fitness.map((r) => ({
+              id: r.id as string,
+              date: r.date as string,
+              type: r.type as string,
+              duration: r.duration as number,
+              calories: r.calories as number | undefined,
+              intensity: r.intensity as FitnessEntry['intensity'],
+              notes: r.notes as string | undefined,
+            })) : get().fitnessEntries,
+            spendingEntries: spending ? spending.map((r) => ({
+              id: r.id as string,
+              date: r.date as string,
+              amount: r.amount as number,
+              category: r.category as string,
+              description: r.description as string,
+              type: r.type as SpendingEntry['type'],
+            })) : get().spendingEntries,
+            moodEntries: mood ? mood.map((r) => ({
+              id: r.id as string,
+              date: r.date as string,
+              mood: r.mood as MoodEntry['mood'],
+              energy: r.energy as MoodEntry['energy'],
+              notes: r.notes as string | undefined,
+              tags: (r.tags ?? []) as string[],
+              sleepHours: r.sleep_hours as number | undefined,
+              activities: (r.activities ?? []) as string[],
+            })) : get().moodEntries,
+            learningEntries: learning ? learning.map((r) => ({
+              id: r.id as string,
+              date: r.date as string,
+              topic: r.topic as string,
+              source: r.source as string,
+              duration: r.duration as number,
+              notes: r.notes as string | undefined,
+              rating: r.rating as LearningEntry['rating'],
+              tags: (r.tags ?? []) as string[],
+            })) : get().learningEntries,
+            readingEntries: reading ? reading.map((r) => ({
+              id: r.id as string,
+              title: r.title as string,
+              author: r.author as string,
+              status: r.status as ReadingEntry['status'],
+              startedAt: r.started_at as string | undefined,
+              completedAt: r.completed_at as string | undefined,
+              pagesTotal: r.pages_total as number | undefined,
+              pagesRead: r.pages_read as number | undefined,
+              rating: r.rating as ReadingEntry['rating'],
+              genre: r.genre as string,
+              notes: r.notes as string | undefined,
+            })) : get().readingEntries,
+            goals: goals ? goals.map((r) => ({
+              id: r.id as string,
+              title: r.title as string,
+              description: r.description as string | undefined,
+              category: r.category as string,
+              targetDate: r.target_date as string,
+              progress: r.progress as number,
+              status: r.status as Goal['status'],
+              milestones: (r.milestones ?? []) as Goal['milestones'],
+              createdAt: r.created_at as string,
+            })) : get().goals,
+          });
+        } catch (err) {
+          console.error('Failed to load user data from Supabase, using local cache:', err);
+          // Supabase unavailable – keep localStorage data as fallback
+        }
+      },
+
+      addTask: (task) => {
+        const newTask = { ...task, id: uuidv4(), createdAt: new Date().toISOString() };
+        set((s) => ({ tasks: [...s.tasks, newTask] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('tasks').insert({ id: newTask.id, user_id: userId, title: newTask.title, description: newTask.description, completed: newTask.completed, priority: newTask.priority, category: newTask.category, created_at: newTask.createdAt, due_date: newTask.dueDate });
+        }
+      },
+      updateTask: (id, updates) => {
+        set((s) => ({ tasks: s.tasks.map((t) => (t.id === id ? { ...t, ...updates } : t)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('tasks').update({ title: updates.title, description: updates.description, completed: updates.completed, priority: updates.priority, category: updates.category, completed_at: updates.completedAt, due_date: updates.dueDate }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteTask: (id) => {
+        set((s) => ({ tasks: s.tasks.filter((t) => t.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('tasks').delete().eq('id', id).eq('user_id', userId); }
+      },
+      toggleTask: (id) => {
         set((s) => ({
           tasks: s.tasks.map((t) =>
             t.id === id
               ? { ...t, completed: !t.completed, completedAt: !t.completed ? new Date().toISOString() : undefined }
               : t
           ),
-        })),
+        }));
+        const { userId, tasks } = get();
+        if (userId) {
+          const t = tasks.find((x) => x.id === id);
+          if (t) { void supabase.from('tasks').update({ completed: t.completed, completed_at: t.completedAt ?? null }).eq('id', id).eq('user_id', userId); }
+        }
+      },
 
-      addNote: (note) =>
-        set((s) => ({
-          notes: [
-            ...s.notes,
-            { ...note, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-          ],
-        })),
-      updateNote: (id, updates) =>
+      addNote: (note) => {
+        const newNote = { ...note, id: uuidv4(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+        set((s) => ({ notes: [...s.notes, newNote] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('notes').insert({ id: newNote.id, user_id: userId, title: newNote.title, content: newNote.content, tags: newNote.tags, category: newNote.category, created_at: newNote.createdAt, updated_at: newNote.updatedAt });
+        }
+      },
+      updateNote: (id, updates) => {
         set((s) => ({
           notes: s.notes.map((n) =>
             n.id === id ? { ...n, ...updates, updatedAt: new Date().toISOString() } : n
           ),
-        })),
-      deleteNote: (id) => set((s) => ({ notes: s.notes.filter((n) => n.id !== id) })),
+        }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('notes').update({ title: updates.title, content: updates.content, tags: updates.tags, category: updates.category, updated_at: new Date().toISOString() }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteNote: (id) => {
+        set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('notes').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addFitnessEntry: (entry) =>
-        set((s) => ({ fitnessEntries: [...s.fitnessEntries, { ...entry, id: uuidv4() }] })),
-      updateFitnessEntry: (id, updates) =>
-        set((s) => ({ fitnessEntries: s.fitnessEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteFitnessEntry: (id) =>
-        set((s) => ({ fitnessEntries: s.fitnessEntries.filter((e) => e.id !== id) })),
+      addFitnessEntry: (entry) => {
+        const newEntry = { ...entry, id: uuidv4() };
+        set((s) => ({ fitnessEntries: [...s.fitnessEntries, newEntry] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('fitness_entries').insert({ id: newEntry.id, user_id: userId, date: newEntry.date, type: newEntry.type, duration: newEntry.duration, calories: newEntry.calories, intensity: newEntry.intensity, notes: newEntry.notes });
+        }
+      },
+      updateFitnessEntry: (id, updates) => {
+        set((s) => ({ fitnessEntries: s.fitnessEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('fitness_entries').update({ date: updates.date, type: updates.type, duration: updates.duration, calories: updates.calories, intensity: updates.intensity, notes: updates.notes }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteFitnessEntry: (id) => {
+        set((s) => ({ fitnessEntries: s.fitnessEntries.filter((e) => e.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('fitness_entries').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addSpendingEntry: (entry) =>
-        set((s) => ({ spendingEntries: [...s.spendingEntries, { ...entry, id: uuidv4() }] })),
-      updateSpendingEntry: (id, updates) =>
-        set((s) => ({ spendingEntries: s.spendingEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteSpendingEntry: (id) =>
-        set((s) => ({ spendingEntries: s.spendingEntries.filter((e) => e.id !== id) })),
+      addSpendingEntry: (entry) => {
+        const newEntry = { ...entry, id: uuidv4() };
+        set((s) => ({ spendingEntries: [...s.spendingEntries, newEntry] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('spending_entries').insert({ id: newEntry.id, user_id: userId, date: newEntry.date, amount: newEntry.amount, category: newEntry.category, description: newEntry.description, type: newEntry.type });
+        }
+      },
+      updateSpendingEntry: (id, updates) => {
+        set((s) => ({ spendingEntries: s.spendingEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('spending_entries').update({ date: updates.date, amount: updates.amount, category: updates.category, description: updates.description, type: updates.type }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteSpendingEntry: (id) => {
+        set((s) => ({ spendingEntries: s.spendingEntries.filter((e) => e.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('spending_entries').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addMoodEntry: (entry) =>
-        set((s) => ({ moodEntries: [...s.moodEntries, { ...entry, id: uuidv4() }] })),
-      updateMoodEntry: (id, updates) =>
-        set((s) => ({ moodEntries: s.moodEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteMoodEntry: (id) =>
-        set((s) => ({ moodEntries: s.moodEntries.filter((e) => e.id !== id) })),
+      addMoodEntry: (entry) => {
+        const newEntry = { ...entry, id: uuidv4() };
+        set((s) => ({ moodEntries: [...s.moodEntries, newEntry] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('mood_entries').insert({ id: newEntry.id, user_id: userId, date: newEntry.date, mood: newEntry.mood, energy: newEntry.energy, notes: newEntry.notes, sleep_hours: newEntry.sleepHours, activities: newEntry.activities, tags: newEntry.tags });
+        }
+      },
+      updateMoodEntry: (id, updates) => {
+        set((s) => ({ moodEntries: s.moodEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('mood_entries').update({ date: updates.date, mood: updates.mood, energy: updates.energy, notes: updates.notes, sleep_hours: updates.sleepHours, activities: updates.activities, tags: updates.tags }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteMoodEntry: (id) => {
+        set((s) => ({ moodEntries: s.moodEntries.filter((e) => e.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('mood_entries').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addLearningEntry: (entry) =>
-        set((s) => ({ learningEntries: [...s.learningEntries, { ...entry, id: uuidv4() }] })),
-      updateLearningEntry: (id, updates) =>
-        set((s) => ({ learningEntries: s.learningEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteLearningEntry: (id) =>
-        set((s) => ({ learningEntries: s.learningEntries.filter((e) => e.id !== id) })),
+      addLearningEntry: (entry) => {
+        const newEntry = { ...entry, id: uuidv4() };
+        set((s) => ({ learningEntries: [...s.learningEntries, newEntry] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('learning_entries').insert({ id: newEntry.id, user_id: userId, date: newEntry.date, topic: newEntry.topic, source: newEntry.source, duration: newEntry.duration, rating: newEntry.rating, notes: newEntry.notes, tags: newEntry.tags });
+        }
+      },
+      updateLearningEntry: (id, updates) => {
+        set((s) => ({ learningEntries: s.learningEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('learning_entries').update({ date: updates.date, topic: updates.topic, source: updates.source, duration: updates.duration, rating: updates.rating, notes: updates.notes, tags: updates.tags }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteLearningEntry: (id) => {
+        set((s) => ({ learningEntries: s.learningEntries.filter((e) => e.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('learning_entries').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addReadingEntry: (entry) =>
-        set((s) => ({ readingEntries: [...s.readingEntries, { ...entry, id: uuidv4() }] })),
-      updateReadingEntry: (id, updates) =>
-        set((s) => ({ readingEntries: s.readingEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) })),
-      deleteReadingEntry: (id) =>
-        set((s) => ({ readingEntries: s.readingEntries.filter((e) => e.id !== id) })),
+      addReadingEntry: (entry) => {
+        const newEntry = { ...entry, id: uuidv4() };
+        set((s) => ({ readingEntries: [...s.readingEntries, newEntry] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('reading_entries').insert({ id: newEntry.id, user_id: userId, title: newEntry.title, author: newEntry.author, status: newEntry.status, pages_total: newEntry.pagesTotal, pages_read: newEntry.pagesRead, rating: newEntry.rating, genre: newEntry.genre, notes: newEntry.notes, started_at: newEntry.startedAt, completed_at: newEntry.completedAt });
+        }
+      },
+      updateReadingEntry: (id, updates) => {
+        set((s) => ({ readingEntries: s.readingEntries.map((e) => (e.id === id ? { ...e, ...updates } : e)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('reading_entries').update({ title: updates.title, author: updates.author, status: updates.status, pages_total: updates.pagesTotal, pages_read: updates.pagesRead, rating: updates.rating, genre: updates.genre, notes: updates.notes, started_at: updates.startedAt, completed_at: updates.completedAt }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteReadingEntry: (id) => {
+        set((s) => ({ readingEntries: s.readingEntries.filter((e) => e.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('reading_entries').delete().eq('id', id).eq('user_id', userId); }
+      },
 
-      addGoal: (goal) =>
-        set((s) => ({
-          goals: [...s.goals, { ...goal, id: uuidv4(), createdAt: new Date().toISOString() }],
-        })),
-      updateGoal: (id, updates) =>
-        set((s) => ({ goals: s.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)) })),
-      deleteGoal: (id) => set((s) => ({ goals: s.goals.filter((g) => g.id !== id) })),
+      addGoal: (goal) => {
+        const newGoal = { ...goal, id: uuidv4(), createdAt: new Date().toISOString() };
+        set((s) => ({ goals: [...s.goals, newGoal] }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('goals').insert({ id: newGoal.id, user_id: userId, title: newGoal.title, description: newGoal.description, category: newGoal.category, target_date: newGoal.targetDate, progress: newGoal.progress, status: newGoal.status, milestones: newGoal.milestones, created_at: newGoal.createdAt });
+        }
+      },
+      updateGoal: (id, updates) => {
+        set((s) => ({ goals: s.goals.map((g) => (g.id === id ? { ...g, ...updates } : g)) }));
+        const { userId } = get();
+        if (userId) {
+          void supabase.from('goals').update({ title: updates.title, description: updates.description, category: updates.category, target_date: updates.targetDate, progress: updates.progress, status: updates.status, milestones: updates.milestones }).eq('id', id).eq('user_id', userId);
+        }
+      },
+      deleteGoal: (id) => {
+        set((s) => ({ goals: s.goals.filter((g) => g.id !== id) }));
+        const { userId } = get();
+        if (userId) { void supabase.from('goals').delete().eq('id', id).eq('user_id', userId); }
+      },
 
       addCodeCommit: (commit) =>
         set((s) => ({ codeCommits: [...s.codeCommits, { ...commit, id: uuidv4() }] })),
