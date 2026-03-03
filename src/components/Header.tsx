@@ -1,4 +1,3 @@
-import { useLocation } from 'react-router-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Moon, Sun, LogOut } from 'lucide-react';
 import { useStore } from '../store/useStore';
@@ -37,6 +36,7 @@ export default function Header() {
     (user?.user_metadata?.full_name as string | undefined) ??
     user?.email ??
     '';
+
   const initials = displayName
     ? displayName
         .split(' ')
@@ -45,23 +45,11 @@ export default function Header() {
         .join('')
         .toUpperCase()
     : '?';
+
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
-
-  const initials = (() => {
-    const fullName = user?.user_metadata?.full_name as string | undefined;
-    if (fullName) {
-      return fullName
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    return user?.email ? user.email[0].toUpperCase() : '?';
-  })();
 
   return (
     <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between shrink-0">
@@ -70,21 +58,6 @@ export default function Header() {
         <p className="text-sm text-gray-500 dark:text-gray-400">{today}</p>
       </div>
       <div className="flex items-center gap-3">
-        {user && (
-          <>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white text-xs font-semibold">
-                {initials}
-              </div>
-              <span className="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
-                {displayName}
-              </span>
-            </div>
-            <button
-              onClick={signOut}
-              className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-              aria-label="Sign out"
-              title="Sign out"
         <button
           onClick={toggleDarkMode}
           className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
@@ -94,11 +67,16 @@ export default function Header() {
         </button>
         {user && (
           <>
-            <div
-              className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold"
-              title={user.email ?? ''}
-            >
-              {initials}
+            <div className="flex items-center gap-2">
+              <div
+                className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold"
+                title={user.email ?? ''}
+              >
+                {initials}
+              </div>
+              <span className="text-sm text-gray-700 dark:text-gray-300 hidden sm:block">
+                {displayName}
+              </span>
             </div>
             <button
               onClick={handleSignOut}
@@ -109,13 +87,6 @@ export default function Header() {
             </button>
           </>
         )}
-        <button
-          onClick={toggleDarkMode}
-          className="p-2 rounded-lg text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-          aria-label="Toggle dark mode"
-        >
-          {settings.darkMode ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
       </div>
     </header>
   );
