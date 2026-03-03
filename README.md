@@ -1,1 +1,3 @@
-Personal Intelligence Dashboard
+# Personal Intelligence Dashboard
+
+Dashboard with SJ philosophy
