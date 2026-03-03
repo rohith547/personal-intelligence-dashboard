@@ -4,6 +4,14 @@ import { Brain, Loader2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
+import { useState, FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BrainCircuit, Loader2 } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+
+export default function Login() {
+  const { signIn, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,11 +27,17 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    setError('');
     setLoading(true);
     const { error } = await signIn(email, password);
     setLoading(false);
     if (error) {
       setError(error);
+      setError(error.message);
     } else {
       navigate('/');
     }
@@ -60,6 +74,37 @@ export default function Login() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+    setError('');
+    setGoogleLoading(true);
+    const { error } = await signInWithGoogle();
+    setGoogleLoading(false);
+    if (error) setError(error.message);
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-8 w-full max-w-md">
+        <div className="flex flex-col items-center mb-8">
+          <BrainCircuit className="text-blue-500 mb-3" size={40} />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Personal Intelligence Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your personal insight engine</p>
+        </div>
+
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600 dark:text-red-400">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full bg-gray-50 dark:bg-gray-700 rounded-xl border-0 px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
               placeholder="you@example.com"
             />
           </div>
@@ -90,6 +135,22 @@ export default function Login() {
             className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors disabled:opacity-60"
           >
             {loading && <Loader2 size={16} className="animate-spin" />}
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full bg-gray-50 dark:bg-gray-700 rounded-xl border-0 px-4 py-3 text-gray-900 dark:text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="••••••••"
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-500 hover:bg-blue-600 disabled:opacity-60 text-white font-medium rounded-xl px-4 py-3 flex items-center justify-center gap-2 transition-colors"
+          >
+            {loading && <Loader2 size={18} className="animate-spin" />}
             Sign In
           </button>
         </form>
@@ -98,6 +159,10 @@ export default function Login() {
           <div className="flex-1 h-px bg-gray-200 dark:bg-gray-600" />
           <span className="text-sm text-gray-400">or</span>
           <div className="flex-1 h-px bg-gray-200 dark:bg-gray-600" />
+        <div className="flex items-center my-4">
+          <div className="flex-1 border-t border-gray-200 dark:border-gray-700" />
+          <span className="px-3 text-xs text-gray-400">or</span>
+          <div className="flex-1 border-t border-gray-200 dark:border-gray-700" />
         </div>
 
         <button
@@ -121,6 +186,15 @@ export default function Login() {
         <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Don't have an account?{' '}
           <Link to="/signup" className="text-indigo-600 hover:underline font-medium">
+          className="w-full border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-60 text-gray-700 dark:text-gray-300 font-medium rounded-xl px-4 py-3 flex items-center justify-center gap-2 transition-colors"
+        >
+          {googleLoading && <Loader2 size={18} className="animate-spin" />}
+          Continue with Google
+        </button>
+
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400 mt-6">
+          Don't have an account?{' '}
+          <Link to="/signup" className="text-blue-500 hover:underline font-medium">
             Sign Up
           </Link>
         </p>

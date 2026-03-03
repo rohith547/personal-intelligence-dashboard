@@ -5,6 +5,10 @@ const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined)
   ?? 'https://memiakngaeadoenvmxnh.supabase.co'
 const supabaseAnonKey = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined)
   ?? 'sb_publishable_o5fvv7D7P3fe73XLWfggtg_s5B51NpX'
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://memiakngaeadoenvmxnh.supabase.co'
+const supabaseAnonKey = 'sb_publishable_o5fvv7D7P3fe73XLWfggtg_s5B51NpX'
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
@@ -12,6 +16,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 -- Run this in Supabase SQL Editor → New Query
 
 -- Enable Row Level Security on all tables
+-- Run in Supabase Dashboard > SQL Editor > New Query
 
 CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -27,6 +32,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 );
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own tasks" ON tasks FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_tasks" ON tasks FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS mood_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -42,6 +48,7 @@ CREATE TABLE IF NOT EXISTS mood_entries (
 );
 ALTER TABLE mood_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own mood entries" ON mood_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_mood" ON mood_entries FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS fitness_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -56,6 +63,7 @@ CREATE TABLE IF NOT EXISTS fitness_entries (
 );
 ALTER TABLE fitness_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own fitness entries" ON fitness_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_fitness" ON fitness_entries FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS spending_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -69,6 +77,7 @@ CREATE TABLE IF NOT EXISTS spending_entries (
 );
 ALTER TABLE spending_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own spending entries" ON spending_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_spending" ON spending_entries FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS notes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -82,6 +91,7 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 ALTER TABLE notes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own notes" ON notes FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_notes" ON notes FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS learning_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -97,6 +107,7 @@ CREATE TABLE IF NOT EXISTS learning_entries (
 );
 ALTER TABLE learning_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own learning entries" ON learning_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_learning" ON learning_entries FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS reading_entries (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -107,6 +118,7 @@ CREATE TABLE IF NOT EXISTS reading_entries (
   pages_total INTEGER,
   pages_read INTEGER DEFAULT 0,
   rating INTEGER CHECK (rating BETWEEN 1 AND 5),
+  rating INTEGER,
   genre TEXT,
   notes TEXT,
   started_at TIMESTAMPTZ,
@@ -115,6 +127,7 @@ CREATE TABLE IF NOT EXISTS reading_entries (
 );
 ALTER TABLE reading_entries ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own reading entries" ON reading_entries FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_reading" ON reading_entries FOR ALL USING (auth.uid() = user_id);
 
 CREATE TABLE IF NOT EXISTS goals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -124,10 +137,12 @@ CREATE TABLE IF NOT EXISTS goals (
   category TEXT DEFAULT 'personal',
   target_date DATE,
   progress INTEGER DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+  progress INTEGER DEFAULT 0,
   status TEXT DEFAULT 'active',
   milestones JSONB DEFAULT '[]',
   created_at TIMESTAMPTZ DEFAULT now()
 );
 ALTER TABLE goals ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can only access their own goals" ON goals FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "own_goals" ON goals FOR ALL USING (auth.uid() = user_id);
 */
